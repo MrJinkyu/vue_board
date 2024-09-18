@@ -1,5 +1,7 @@
 <template>
-  <div>
+  <AppLoading v-if="loading"/>
+  <AppError v-else-if="error" :message="error.message"/>
+  <div v-else>
     <h2>{{post.title}}</h2>
     <p>{{post.content}}</p>
     <p class="text-muted">{{post.createdAt}}</p>
@@ -29,14 +31,17 @@
 import { deletePost, getPostById } from '@/api/post';
 import { ref } from 'vue';
 import {  useRouter } from 'vue-router';
+import AppLoading from '@/components/app/AppLoading.vue';
+import AppError from '@/components/app/AppError.vue';
 
 const props = defineProps({
-  id:Number,
+  id:[String,Number],
 });
 
 const router = useRouter();
-
 const post = ref({});
+const error = ref(null);
+const loading = ref(false);
 
 const setPost = ({title,content,createdAt}) => {
   post.value.title = title;
@@ -45,10 +50,13 @@ const setPost = ({title,content,createdAt}) => {
 }
 const fetchPost = async () => {
   try{
+    loading.value = true;
     const {data} = await getPostById(props.id);
     setPost(data);
-  }catch(error){
-    console.error(error);
+  }catch(err){
+    error.value = err;
+  }finally{
+    loading.value = false;
   }
 };
 fetchPost();

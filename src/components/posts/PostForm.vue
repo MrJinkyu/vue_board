@@ -8,7 +8,9 @@
         <label for="content" class="form-label">내용</label>
         <textarea :value="content" @input="$emit('update:content',$event.target.value)" class="form-control" id="content" rows="3"></textarea>
       </div>
-      <slot name="actions"></slot>
+      <div class="d-flex gap-2 mt-4">
+        <slot name="actions"></slot>
+      </div>
     </form>
 </template>
 

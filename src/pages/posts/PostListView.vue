@@ -2,48 +2,30 @@
   <div>
     <h2>게시글 목록</h2>
     <hr class="my-4">
-    <form @submit.prevent>
-      <div class="row g-3">
-        <div class="col">
-          <input type="text" v-model="params.title_like" class="form-control">
-        </div>
-        <div class="col">
-          <select v-model="params._limit" class="form-select">
-            <option value="3">3개씩 보기</option>
-            <option value="6">6개씩 보기</option>
-            <option value="9">9개씩 보기</option>
-          </select>
-        </div>
-      </div>
-    </form>
+    <PostFilter v-model:title="params.title_like" v-model:limit="params._limit"/>
     <hr class="my-4"/>
-    <div class="row g-3">
-      <div class="col-4" v-for="post in posts" :key="post.id">
-        <PostItem @click="goPage(post.id)" :title="post.title" :content="post.content" :created-at="post.createdAt"/>
-      </div>
+
+    <AppLoading v-if="loading"/>
+    <AppError v-else-if="error" :message="error.message"/>
+    <template v-else>
+      <AppGrid :items = posts>
+        <template v-slot="{ item }">
+          <PostItem @click="goPage(item.id)" :title="item.title" :content="item.content" :created-at="item.createdAt" @modal="openModal(item)"/>
+        </template>
+      </AppGrid>
+      <AppPageNation :current-page="params._page" :page-count="pageCount" @page="(page) => params._page = page"/>
+    </template>
+    
+  <Teleport to="#modal">
+    <PostModal v-model="show" :title="modalTitle" :content="modalContent" :createdAt="modalCreatedAt"/>
+  </Teleport>
+    <template v-if="posts && posts.length > 0">
+    <hr class="my-5">
+    <AppCard>
+      <PostDetailView :id="posts[0].id"/>
+    </AppCard>
+    </template>
     </div>
-    <nav class="mt-5" aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    <li class="page-item" :class="{disabled: ! (params._page > 1)}">
-      <a class="page-link" href="#" aria-label="Previous" @click.prevent="--params._page">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    <li class="page-item" :class="{active: params._page === page}" v-for="page in pageCount" :key="page">
-      <a class="page-link" href="#" @click.prevent="params._page = page">{{ page }}</a>
-    </li>
-    <li class="page-item" :class="{disabled: ! (params._page < pageCount)}">
-      <a class="page-link" href="#" aria-label="Next" @click.prevent="++params._page">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</nav>
-  </div>
-  <hr class="my-5">
-  <AppCard>
-    <PostDetailView :id="1"/>
-  </AppCard>
 </template>
 
 <script setup>
@@ -52,9 +34,17 @@ import PostItem from '@/components/posts/PostItem.vue';
 import { computed, ref, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import PostDetailView from './PostDetailView.vue';
-import AppCard from '@/components/AppCard.vue';
+import AppCard from '@/components/app/AppCard.vue';
+import AppPageNation from '@/components/app/AppPageNation.vue';
+import AppGrid from '@/components/app/AppGrid.vue';
+import PostFilter from '@/components/posts/PostFilter.vue';
+import PostModal from '@/components/posts/PostModal.vue';
+import AppLoading from '@/components/app/AppLoading.vue';
+import AppError from '@/components/app/AppError.vue';
 
 const router = useRouter();
+const error = ref(null);
+const loading = ref(false);
 const posts = ref([]);
 const params = ref({
   _sort: 'createdAt',
@@ -68,20 +58,31 @@ const totalCount = ref(0);
 const pageCount = computed(() => Math.ceil(totalCount.value / params.value._limit),)
 const fetchPosts = async () => {
   try{
+    loading.value = true;
     const {data, headers} = await getPosts(params.value);
     posts.value = data;
     totalCount.value = headers['x-total-count'];
-  }catch (error){
-    console.error(error);
-  };
+  }catch (err){
+    error.value = err;
+  }finally{
+    loading.value = false;
+  }
 }
 const goPage = (id) => {
   router.push({name:'PostDetail',params:{id}});
 }
 
 watchEffect(fetchPosts);
+
+const show = ref(false);
+const modalTitle = ref('');
+const modalContent = ref('');
+const modalCreatedAt = ref('');
+
+const openModal = ({title, content, createdAt}) => {
+  show.value = true;
+  modalTitle.value = title;
+  modalContent.value = content;
+  modalCreatedAt.value = createdAt;
+}
 </script>
-
-<style lang="scss" scoped>
-
-</style>
